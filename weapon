@@ -1,0 +1,67 @@
+import javafx.scene.image.*;
+import javafx.scene.media.*;
+import javafx.util.Duration;
+
+class Weapon {
+  // Name
+  private String weaponName;
+  
+  // Amount of damage to enemy's HP value
+  private int damage;
+  
+  // Images of weapons in different stages
+  private ImageView selectionImageView; // for selection
+  private ImageView beforeImageView; // before hitting
+  private ImageView afterImageView; // when hitting
+  
+  // Sound effect when being used
+  private MediaPlayer soundEffect;
+  
+  // Create weapon with name and damage
+  Weapon(String weaponName, int damage) {
+    this.weaponName = weaponName;
+    this.damage = damage;
+  }
+  
+  // ---------------------- Get properties ----------------------
+  // Get image in selection view
+  public ImageView getSelectionImageView() {
+    return selectionImageView;
+  }
+  
+  // Get image in before hitting stage
+  public ImageView getBeforeImageView() {
+    return beforeImageView;
+  }
+  
+  // Get image during hitting stage
+  public ImageView getAfterImageView() {
+    return afterImageView;
+  }
+  
+  // Get the amount of damage
+  public int getDamage() {
+    return damage;
+  }
+  
+  // ---------------------- Set properties ----------------------
+  // Set images for the weapon in different stages
+  public void setImages(String urlSelection, String urlBefore, String urlAfter) {
+    this.selectionImageView = new ImageView(new Image(urlSelection));
+    this.beforeImageView = new ImageView(new Image(urlBefore));
+    this.afterImageView = new ImageView(new Image(urlAfter));
+    
+  }
+  
+  // Set sound effect
+  public void setSoundEffect(String urlSound) {
+    this.soundEffect = new MediaPlayer(new Media(getClass().getResource(urlSound).toExternalForm()));
+  }
+  
+  // Play the sound effect
+  public void playSoundEffect() {
+    soundEffect.seek(Duration.ZERO);
+    soundEffect.play();
+  }
+  
+}
