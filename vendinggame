@@ -1,0 +1,587 @@
+import javafx.application.Application;
+import javafx.scene.image.*;
+import javafx.stage.Stage;
+import javafx.scene.Scene;
+import javafx.scene.layout.*;
+import javafx.scene.control.*;
+import javafx.geometry.*;
+import javafx.scene.text.*;
+import javafx.event.*;
+import javafx.scene.paint.*;
+import javafx.scene.shape.*;
+import javafx.animation.*;
+import javafx.util.Duration;
+import javafx.stage.FileChooser;
+import java.io.*;
+import java.awt.Desktop;
+import javax.swing.JOptionPane;
+import javafx.scene.media.*;
+import javax.swing.JFrame;
+
+public class VendingGame extends Application {
+  // load the background image and set the background
+  BackgroundImage[] allBackgroundImage = {
+    new BackgroundImage(new Image("image/startScene.png"), BackgroundRepeat.NO_REPEAT,
+                        BackgroundRepeat.NO_REPEAT, BackgroundPosition.CENTER, BackgroundSize.DEFAULT),
+    new BackgroundImage(new Image("image/backGround.jpg"), BackgroundRepeat.NO_REPEAT,
+                        BackgroundRepeat.NO_REPEAT, BackgroundPosition.CENTER, BackgroundSize.DEFAULT) };
+  
+  // setting sceneNumber to be 0 so that it shows startScene first
+  private int sceneNumber = 0;
+  Scene[] scenes = new Scene[5];
+  
+  // setting weaponNumber to be 0 so that knife is used first
+  private int weaponNumber = 1;
+  private Weapon currentWeapon;
+  private ImageView currentWeaponView;
+  Weapon weapons[] = new Weapon[3];
+  
+  // Panes
+  Pane mainGamePane;
+  BorderPane gamePane;
+  
+  // Enemy
+  Enemy currentEnemy;
+  ImageView currentEnemyView;
+  
+  // For upload enemy's photo
+  private Desktop desktop = Desktop.getDesktop();
+  File file;
+  
+  // HP Bar
+  private Rectangle hpBar;
+  double hpBarWidth = 400;
+  double hpBarHeight = 30;
+  Double hpBarX = new Double(0);
+  
+  // Message
+  Text message = new Text("");
+  ImageView messageBubble = new ImageView();
+  String messsageToShow;
+  
+  // Background Music
+  private MediaPlayer backgroundPlayer;
+  
+  // Timer
+  static Integer timeSeconds = 0;
+  private Timeline timeline;
+  private Timeline bindingHpTimeline;
+  private Label lbTimer = new Label();
+  
+  @Override
+  public void start(Stage primaryStage) {
+    // Play background music
+    setBackgroundMusic("media/bgm.mp3", 1.0);
+    
+    // Upload Photo stage
+    Stage uploadStage = new Stage(); // Create a new stage
+    uploadStage.setTitle("File Chooser Sample");
+    final GridPane inputGridPane = new GridPane();
+    uploadStage.setScene(new Scene(inputGridPane));
+    
+    final FileChooser fileChooser = new FileChooser();
+    final Button openButton = new Button("Open a Picture...");
+    inputGridPane.getChildren().addAll(openButton);
+    
+    // Display file chooser for uploading new photo
+    openButton.setOnAction(new EventHandler<ActionEvent>() {
+      @Override
+      public void handle(final ActionEvent e) {
+        configureFileChooser(fileChooser);
+        try {
+          file = fileChooser.showOpenDialog(uploadStage);
+          
+          if (file != null) {
+            
+            // Use new enemy photo if the file type is correct: .jpg / ..jpeg / .bmp / ..gif
+            // / .png
+            if (((file.toURI().toURL().toString()).toLowerCase().endsWith(".jpg"))
+                  || ((file.toURI().toURL().toString()).toLowerCase().endsWith(".jpeg"))
+                  || ((file.toURI().toURL().toString()).toLowerCase().endsWith(".bmp"))
+                  || ((file.toURI().toURL().toString()).toLowerCase().endsWith(".gif"))
+                  || ((file.toURI().toURL().toString()).toLowerCase().endsWith(".png"))) {
+              
+              currentEnemy = new Enemy();
+              mainGamePane.getChildren().remove(currentEnemyView);
+              currentEnemy.setEnemyImage(file.toURI().toURL().toString());
+              currentEnemyView = currentEnemy.getEnemyImageView();
+              
+              currentEnemyView.xProperty().bind((mainGamePane.widthProperty().subtract(320)).divide(2));
+              currentEnemyView.yProperty().bind((mainGamePane.heightProperty().subtract(320)).divide(2));
+              currentEnemyView.setFitHeight(264);
+              currentEnemyView.setFitWidth(266);
+              mainGamePane.getChildren().add(currentEnemyView);
+              
+              sceneNumber = 1;
+              primaryStage.setScene(scenes[sceneNumber]);
+              startTimer();
+              uploadStage.close();
+              
+            } else {
+              uploadStage.close();
+              JFrame frame = new JFrame();
+              frame.setVisible(true);
+              JOptionPane.showMessageDialog(frame,
+                                            "Please upload the file with file types \".jpg\", \".jpeg\", \".bmp\", \".gif\", \".png\"",
+                                            "Error occurred: ", JOptionPane.ERROR_MESSAGE);
+              frame.setVisible(false);
+            }
+          }
+        } catch (Exception ex) {
+          JFrame frame = new JFrame();
+          frame.setVisible(true);
+          JOptionPane.showMessageDialog(frame,
+                                        "These is other error",
+                                        "Other error occurred: ", JOptionPane.ERROR_MESSAGE);
+          frame.setVisible(false);
+        }
+      }
+    });
+    
+    
+    // --------------------------STARTSCENE --------------------------
+    GridPane startPane = new GridPane();
+    startPane.setHgap(20);
+    startPane.setVgap(20);
+    startPane.setAlignment(Pos.BOTTOM_CENTER);
+    startPane.setPadding(new Insets(33.5, 33.5, 33.5, 1.5));
+    
+    Background startBackground = new Background(allBackgroundImage[0]);
+    startPane.setBackground(startBackground);
+    
+    // create the three buttons and put them on the startPane
+    Button btStart = new Button("Start");
+    Button btInstruction = new Button("Instruction");
+    Button btUpload = new Button("Upload your own ENEMY figure");
+    
+    btStart.setStyle("-fx-background-color: slateblue; -fx-text-fill: white;-fx-border-color: blue;");
+    btInstruction.setStyle("-fx-background-color: slateblue; -fx-text-fill: white;-fx-border-color: blue;");
+    btUpload.setStyle("-fx-background-color: slateblue; -fx-text-fill: white;-fx-border-color: blue;");
+    
+    btStart.setFont(new Font("Andale Mono", 24));
+    btInstruction.setFont(new Font("Andale Mono", 24));
+    btUpload.setFont(new Font("Andale Mono", 24));
+    
+    startPane.add(btStart, 2, 1);
+    startPane.add(btInstruction, 2, 2);
+    startPane.add(btUpload, 2, 3);
+    
+    startPane.setHalignment(btStart, HPos.CENTER);
+    startPane.setHalignment(btInstruction, HPos.CENTER);
+    startPane.setHalignment(btUpload, HPos.CENTER);
+    
+    // Event handling of buttons
+    btStart.setOnAction(e -> {
+      sceneNumber = 1;
+      primaryStage.setScene(scenes[sceneNumber]);
+      currentEnemy = new Enemy();
+      startTimer();
+    });
+    
+    btInstruction.setOnAction(e -> {
+      sceneNumber = 2;
+      primaryStage.setScene(scenes[sceneNumber]);
+    });
+    
+    btUpload.setOnAction(e -> {
+      uploadStage.show();
+    });
+    
+    // creating startScene
+    Scene startScene = new Scene(startPane, 640, 640);
+    scenes[0] = startScene;
+    // --------------------------STARTSCENE END --------------------------
+    
+    
+    // --------------------------INSTRUCTIONSCENE--------------------------
+    // Create a pane and set its properties
+    BorderPane instructionPane = new BorderPane();
+    instructionPane.setPadding(new Insets(22, 22, 22, 22));
+    
+    // Set title on top, set details on center, set return button at bottom right
+    // Title on top
+    Text textTitle = new Text("How To Play??");
+    textTitle.setFont(Font.font("Courier", FontWeight.BOLD, FontPosture.ITALIC, 50));
+    
+    instructionPane.setTop(textTitle);
+    instructionPane.setAlignment(textTitle, Pos.CENTER);
+    
+    // Details on center
+    ImageView instructionView = new ImageView(new Image("image/instructionScene.png", 600, 450, false, false));
+    instructionPane.setCenter(instructionView);
+    
+    // Return Button at bottom right
+    Button btReturn = new Button("Return");
+    btReturn.setOnAction(e -> {
+      sceneNumber = 0;
+      primaryStage.setScene(scenes[sceneNumber]);
+    });
+    btReturn.setStyle("-fx-background-color: blue; -fx-text-fill: white;-fx-border-color: slateblue;");
+    btReturn.setFont(new Font("Andale Mono", 24));
+    instructionPane.setBottom(btReturn);
+    instructionPane.setAlignment(btReturn, Pos.BOTTOM_RIGHT);
+    
+    // Create instruction scene
+    Scene instructionScene = new Scene(instructionPane, 640, 640);
+    scenes[2] = instructionScene;
+    // ------------------------INSTRUCTIONSCENE END -------------------------
+    
+    
+    // ------------------------ GAMESCENE -------------------------
+    setWeapons();
+    setCurrentWeapon();
+    
+    // Main Game Pane
+    // Create a Pane and set background
+    mainGamePane = new Pane();
+    Background mainGameBackground = new Background(allBackgroundImage[1]);
+    mainGamePane.setBackground(mainGameBackground);
+    
+    // Creating the winning Text
+    Text winText = new Text("");
+    winText.setFill(Color.YELLOW);
+    winText.setFont(Font.font("Verdana", FontWeight.BOLD, FontPosture.ITALIC, 35));
+    
+    winText.xProperty().bind((mainGamePane.widthProperty().subtract(320).divide(2)));
+    winText.yProperty().bind((mainGamePane.heightProperty().divide(2)));
+    winText.setTextAlignment(TextAlignment.CENTER);
+    
+    // Put the weapon in the Pane
+    currentWeaponView = currentWeapon.getBeforeImageView();
+    mainGamePane.getChildren().add(currentWeaponView);
+    
+    // Weapon following mouse movement
+    mainGamePane.setOnMouseMoved(e -> {
+      changeWeapon();
+      currentWeaponView.setX(e.getX());
+      currentWeaponView.setY(e.getY());
+    });
+    
+    // Create Enemy
+    currentEnemy = new Enemy();
+    currentEnemyView = currentEnemy.getEnemyImageView();
+    currentEnemyView.xProperty().bind((mainGamePane.widthProperty().subtract(320)).divide(2));
+    currentEnemyView.yProperty().bind((mainGamePane.heightProperty().subtract(380)).divide(2));
+    
+    mainGamePane.getChildren().add(currentEnemyView);
+    
+    // Create a rectangle representing HP and add a text
+    hpBar = new Rectangle(0, 65, hpBarWidth, hpBarHeight);
+    hpBar.xProperty().bind((mainGamePane.widthProperty().subtract(320)).divide(2));
+    hpBar.setArcWidth(10);
+    hpBar.setArcHeight(10);
+    hpBar.setFill(Color.TOMATO);
+    
+    Text hpText = new Text("HP: ");
+    hpText.setFont(new Font("Verdana", 30));
+    hpText.setFill(Color.RED);
+    hpText.xProperty().bind(hpBar.xProperty().subtract(70));
+    hpText.yProperty().bind(hpBar.yProperty().add(25));
+    mainGamePane.getChildren().add(hpText);
+    mainGamePane.getChildren().add(hpBar);
+    
+    Text txRestartReminder = new Text("Please press the \nRESTART button\nat the top left corner");
+    txRestartReminder.setFill(Color.RED);
+    txRestartReminder.setFont(Font.font("Verdana", FontWeight.BOLD, FontPosture.ITALIC, 50));
+    txRestartReminder.xProperty().bind((mainGamePane.widthProperty().subtract(500)).divide(2));
+    txRestartReminder.yProperty().bind((mainGamePane.heightProperty().subtract(320)).divide(2));
+    txRestartReminder.setTextAlignment(TextAlignment.CENTER);
+    
+    // Event handling when clicking on the enemy
+    mainGamePane.setOnMousePressed(e -> {
+      if (e.getX() >= (mainGamePane.widthProperty().doubleValue() - 320) / 2
+            && e.getX() <= (mainGamePane.widthProperty().doubleValue() + 280) / 2
+            && e.getY() >= (mainGamePane.heightProperty().doubleValue() - 320) / 2
+            && e.getY() <= (mainGamePane.heightProperty().doubleValue() + 150) / 2) {
+        if (currentEnemy.isDead() && winText.getParent() != null && txRestartReminder.getParent() == null) {
+          mainGamePane.getChildren().remove(winText);
+          mainGamePane.getChildren().add(txRestartReminder);
+        }
+        
+        // minus HP according to the chose weapon
+        currentEnemy.minusHp(currentWeapon.getDamage());
+        
+        // sound effect
+        currentWeapon.playSoundEffect();
+        // change weapon picture
+        changeWeaponAfter();
+        currentWeaponView.setX(e.getX());
+        currentWeaponView.setY(e.getY());
+        
+        final Timeline timeline2 = new Timeline(new KeyFrame(Duration.millis(1000), event -> {
+          changeWeapon();
+          currentWeaponView.setX(e.getX());
+          currentWeaponView.setY(e.getY());
+        }));
+        timeline2.play();
+        timeline2.setCycleCount(Timeline.INDEFINITE);
+        
+        // check if the enemy died already
+        if (currentEnemy.isDead() && winText.getParent() == null && txRestartReminder.getParent() == null) {
+          winText.setText("CONGRATS!!!\nEnemy died^0^");
+          mainGamePane.getChildren().add(winText);
+          stopTimer();
+          if (backgroundPlayer.getStatus() == MediaPlayer.Status.PLAYING)
+            backgroundPlayer.stop();
+        }
+      }
+    });
+    
+    // Weapon Selection Pane
+    // Create a VBox and set alignment
+    VBox weaponSelectionPane = new VBox(15);
+    weaponSelectionPane.setAlignment(Pos.BOTTOM_CENTER);
+    // Create the label of timer
+    lbTimer.setText(timeSeconds.toString());
+    lbTimer.setTextFill(Color.RED);
+    lbTimer.setStyle("-fx-font-size: 4em;");
+    
+    // Create buttons for selection
+    Button btKnife = new Button("", weapons[0].getSelectionImageView());
+    Button btFist = new Button("", weapons[1].getSelectionImageView());
+    Button btGun = new Button("", weapons[2].getSelectionImageView());
+    weaponSelectionPane.getChildren().addAll(btKnife, btFist, btGun, lbTimer);
+    
+    // Event handling of buttons
+    btKnife.setOnAction(e -> {
+      if (weaponNumber != 0)
+        weaponNumber = 0;
+    });
+    
+    btFist.setOnAction(e -> {
+      if (weaponNumber != 1)
+        weaponNumber = 1;
+    });
+    
+    btGun.setOnAction(e -> {
+      if (weaponNumber != 2)
+        weaponNumber = 2;
+    });
+    
+    // Message Pane
+    BorderPane messagePane = new BorderPane();
+    messagePane.setTop(new Label("Enter a message to your enemy (Press Enter to send): "));
+    TextField messageTextField = new TextField();
+    messagePane.setCenter(messageTextField);
+    messagePane.setPadding(new Insets(10.5, 10.5, 10.5, 10.5));
+    
+    // Event handling of messageTextField
+    messageTextField.setOnAction(e -> {
+      try {
+        // Messgae Bubble
+        messageBubble.setImage(new Image("image/message.png"));
+        messageBubble.xProperty().bind((mainGamePane.widthProperty().divide(10)));
+        messageBubble.yProperty().bind((mainGamePane.heightProperty().subtract(200)));
+        mainGamePane.getChildren().add(messageBubble);
+        // Messgae
+        if (messageTextField.getText().length() > 39) {
+          messsageToShow = messageTextField.getText().substring(0, 39);
+          messageTextField.setText(messsageToShow);}
+        String messsageToShow = messageTextField.getText().replaceAll("fuck", "f**k");
+        
+        // 3 lines if more than 26 words
+        if (messsageToShow.length() > 26)
+          message.setText(messsageToShow.substring(0, 13) + "\n" + messsageToShow.substring(13, 26) + "\n"
+                            + messsageToShow.substring(26));
+        // 2 lines if more than 13 words
+        else if (messsageToShow.length() > 13) {
+          message.setText(messsageToShow.substring(0, 13) + "\n" + messsageToShow.substring(13));
+        } else {
+          message.setText(messsageToShow);
+        }
+        
+        message.setFont(Font.font("Verdana", FontWeight.BOLD, 30));
+        message.xProperty().bind(mainGamePane.widthProperty().divide(8.5));
+        message.yProperty().bind((mainGamePane.heightProperty().subtract(150)));
+        mainGamePane.getChildren().add(message);
+        
+      } catch (IllegalArgumentException ex) {
+        messageTextField.setText("Sorry, you haven't finished your last message! Wait a second");
+        
+      } finally {
+        final Timeline timeline = new Timeline(new KeyFrame(Duration.millis(2000), event -> {
+          message.setText("");
+          
+          mainGamePane.getChildren().remove(message);
+          mainGamePane.getChildren().remove(messageBubble);
+        }));
+        timeline.play();
+        timeline.setCycleCount(Timeline.INDEFINITE);
+      }
+    });
+    
+    // Restart Button
+    Button btRestart = new Button("RESTART");
+    btRestart.setStyle("-fx-background-color: blue; -fx-text-fill: white;-fx-border-color: slateblue;");
+    btRestart.setFont(new Font("Andale Mono", 24));
+    btRestart.setOnAction(e -> {
+      if (currentEnemy.isDead() && winText.getParent() != null && txRestartReminder.getParent() == null) {
+        mainGamePane.getChildren().remove(winText);
+      }
+      
+      if (currentEnemy.isDead() && winText.getParent() == null && txRestartReminder.getParent() != null)
+        mainGamePane.getChildren().remove(txRestartReminder);
+      if (backgroundPlayer.getStatus() == MediaPlayer.Status.PLAYING)
+        backgroundPlayer.stop();
+      
+      startTimer();
+      setBackgroundMusic("media/bgm.mp3", 1.0);
+      currentEnemy = new Enemy();
+    });
+    // Return Button
+    Button btReturnToStartScene = new Button("RETURN");
+    btReturnToStartScene.setStyle("-fx-background-color: blue; -fx-text-fill: white;-fx-border-color: slateblue;");
+    btReturnToStartScene.setFont(new Font("Andale Mono", 24));
+    btReturnToStartScene.setOnAction(e -> {
+      stopTimer();
+      if (currentEnemy.isDead() && winText.getParent() != null && txRestartReminder.getParent() == null) {
+        mainGamePane.getChildren().remove(winText);
+      }
+      
+      if (currentEnemy.isDead() && winText.getParent() == null && txRestartReminder.getParent() != null) {
+        mainGamePane.getChildren().remove(txRestartReminder);
+      }
+      
+      if (backgroundPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
+        backgroundPlayer.stop();
+      }
+      
+      setBackgroundMusic("media/bgm.mp3", 1.0);
+      sceneNumber = 0;
+      primaryStage.setScene(scenes[sceneNumber]);
+      
+      currentEnemy = new Enemy();
+      
+    });
+    
+    HBox hbTwoButtons = new HBox(2);
+    hbTwoButtons.getChildren().addAll(btRestart, btReturnToStartScene);
+    
+    // Putting 3 Panes into the gamePane
+    gamePane = new BorderPane();
+    gamePane.setCenter(mainGamePane);
+    gamePane.setBottom(messagePane);
+    gamePane.setRight(weaponSelectionPane);
+    gamePane.setTop(hbTwoButtons);
+    gamePane.setAlignment(btRestart, Pos.TOP_LEFT);
+    
+    // Create game scene
+    Scene gameScene = new Scene(gamePane, 640, 640);
+    scenes[1] = gameScene;
+    
+    // ------------------------ GAMESCENE END-------------------------
+    
+    
+    // Do setting pf stage
+    primaryStage.setTitle("Fight Your Enemy!!"); // Set the stage title
+    primaryStage.setScene(scenes[sceneNumber]); // **will be scenes[i]
+    primaryStage.show();
+    
+  }
+  
+  public static void main(String[] args) {
+    launch(args);
+  }
+  
+  // Configure weapons with images for display and effects
+  private void setWeapons() {
+    Weapon knife = new Weapon("knife", 5);
+    Weapon slap = new Weapon("slap", 2);
+    Weapon gun = new Weapon("gun", 10);
+    weapons[0] = knife;
+    weapons[1] = slap;
+    weapons[2] = gun;
+    
+    knife.setImages("image/knifeSelection.png", "image/knifeBefore.png", "image/knifeAfter.png");
+    slap.setImages("image/slapSelection.png", "image/slapBefore.png", "image/slapAfter.png");
+    gun.setImages("image/gunSelection.png", "image/gunBefore.png", "image/gunAfter.png");
+    
+    // knife.setSoundEffect("media/knifeSound.mp3");
+    slap.setSoundEffect("media/slapSound.mp3");
+    gun.setSoundEffect("media/gunSound.mp3");
+    knife.setSoundEffect("media/knifeSound.mp3");
+    
+  }
+  
+  // Set a new weapon to the current weapon
+  private void setCurrentWeapon() {
+    currentWeapon = weapons[weaponNumber];
+    
+  }
+  
+  // Change the weapon to use
+  private void changeWeapon() {
+    mainGamePane.getChildren().remove(currentWeaponView);
+    setCurrentWeapon();
+    currentWeaponView = currentWeapon.getBeforeImageView();
+    mainGamePane.getChildren().add(currentWeaponView);
+  }
+  
+  // Display the view of "weapon in use / when hitting"
+  private void changeWeaponAfter() {
+    mainGamePane.getChildren().remove(currentWeaponView);
+    currentWeaponView = currentWeapon.getAfterImageView();
+    mainGamePane.getChildren().add(currentWeaponView);
+  }
+  
+  // Configure the file chooser settings
+  private static void configureFileChooser(final FileChooser fileChooser) {
+    fileChooser.setTitle("View Pictures");
+    fileChooser.setInitialDirectory(new File(System.getProperty("user.home")));
+  }
+  
+  // Set background music (repeated music)
+  public void setBackgroundMusic(String urlMusic, double volume) {
+    backgroundPlayer = new MediaPlayer(new Media(getClass().getResource(urlMusic).toString()));
+    backgroundPlayer.setVolume(volume);
+    backgroundPlayer.setOnEndOfMedia(new Runnable() {
+      public void run() {
+        backgroundPlayer.seek(Duration.ZERO);
+      }
+    });
+    backgroundPlayer.play();
+  }
+  
+  // Start the timer
+  public void startTimer() {
+    // Timer for counting the game duration
+    if (timeline != null) {
+      stopTimer();
+    }
+    timeSeconds = 0;
+    lbTimer.setText(timeSeconds.toString());
+    timeline = new Timeline();
+    timeline.setCycleCount(Timeline.INDEFINITE);
+    timeline.getKeyFrames().add(new KeyFrame(Duration.seconds(1), e -> {
+      timeSeconds++;
+      lbTimer.setText(timeSeconds.toString());
+      
+      if (timeSeconds % 5 == 0) {
+        IsAngry(currentEnemy);
+      }
+      
+    }));
+    
+    // New timer for the purpose of instant display of changes in values
+    bindingHpTimeline = new Timeline();
+    bindingHpTimeline.setCycleCount(Timeline.INDEFINITE);
+    bindingHpTimeline.getKeyFrames().add(new KeyFrame(Duration.millis(50), e -> {
+      hpBar.widthProperty().bind(currentEnemy.gethpValueProperty().multiply(4));
+    }));
+    bindingHpTimeline.playFromStart();
+    
+    timeline.playFromStart();
+  }
+  
+  // Stop the timer
+  public void stopTimer() {
+    timeline.stop();
+  }
+  
+  // Check whether enemy is in angry stage (for recovery of hpValue)
+  public void IsAngry(Enemy enemy) {
+    Runnable enemyRecover = enemy.new EnemyRecovery();
+    Thread enemyThread = new Thread(enemyRecover);
+    enemyThread.start();
+  }
+}
